@@ -53,7 +53,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# كلمة المرور المركزية
+# كلمة المرور المركزية لمدير النظام
 MASTER_PASSWORD = "admin" 
 
 # دوال التعامل مع البيانات
@@ -61,7 +61,6 @@ def load_data():
     try:
         with open('data.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
-            # التأكد من وجود مفتاح للرابط الأساسي
             if "base_url" not in data:
                 data["base_url"] = ""
             return data
@@ -77,7 +76,7 @@ BASE_URL = db.get("base_url", "")
 query_params = st.query_params
 
 # ==========================================
-# 1. واجهة المشاركين (تفتح مباشرة بدون تسجيل)
+# 1. واجهة المشاركين (تفتح مباشرة من الرابط بدون كلمة مرور)
 # ==========================================
 if "group" in query_params and query_params["group"] in db["groups"]:
     group_id = query_params["group"]
@@ -91,43 +90,30 @@ if "group" in query_params and query_params["group"] in db["groups"]:
     progress_percentage = completed_parts / 30.0
     
     st.title(f"📖 {group_data['name']}")
-    st.markdown("<div class='main-subtitle'>خطّط لرحلتك · تتبّع تقدمك · أتمم حفظ القرآن</div>", unsafe_allow_html=True)
+    st.markdown("<div class='main-subtitle'>متابعة الختمة · 30 جزء · 30 قارئ</div>", unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
     with c1: 
-        st.markdown("<div class='dashboard-card card-green'><div class='icon'>📅</div><h2>528</h2><p>الأيام المتبقية</p></div>", unsafe_allow_html=True)
+        st.markdown("<div class='dashboard-card card-green'><div class='icon'>👥</div><h2>30</h2><p>عدد المشاركين</p></div>", unsafe_allow_html=True)
     with c2: 
-        st.markdown("<div class='dashboard-card card-yellow'><div class='icon'>🌙</div><h2>17.6</h2><p>الأشهر</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='dashboard-card card-yellow'><div class='icon'>✅</div><h2>{completed_parts}</h2><p>الأجزاء المكتملة</p></div>", unsafe_allow_html=True)
     with c3: 
-        st.markdown("<div class='dashboard-card card-dark'><div class='icon'>📖</div><h2>3/114</h2><p>السور المحفوظة</p></div>", unsafe_allow_html=True)
+        remaining = 30 - completed_parts
+        st.markdown(f"<div class='dashboard-card card-dark'><div class='icon'>⏳</div><h2>{remaining}</h2><p>الأجزاء المتبقية</p></div>", unsafe_allow_html=True)
     with c4: 
-        st.markdown("<div class='dashboard-card card-brown'><div class='icon'>🏁</div><h2>ديسمبر 2027</h2><p>موعد الإتمام المتوقع</p></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='dashboard-card card-brown'><div class='icon'>🔄</div><h2>{group_data.get('khatma_count', 0)}</h2><p>الختمات المنجزة</p></div>", unsafe_allow_html=True)
 
     st.markdown(f"""
     <div class='stats-row'>
-        <span class='stats-text'>مكتمل بنسبة {int(progress_percentage * 100)}%</span>
-        <span class='stats-text'>الأجزاء المنجزة: {completed_parts}/30 جزء</span>
+        <span class='stats-text'>نسبة الإنجاز: {int(progress_percentage * 100)}%</span>
     </div>
     """, unsafe_allow_html=True)
     st.progress(progress_percentage)
     st.write("---")
 
-    tab_mark, tab_details, tab_schedule, tab_overview = st.tabs([
-        "✅ تأكيد الحفظ", "📖 تفاصيل السورة", "📅 الجدول الزمني", "📊 ملخص الأجزاء"
+    tab_overview, tab_mark, tab_details, tab_schedule = st.tabs([
+        "📊 ملخص الأجزاء (الجدول)", "✅ تأكيد الحفظ", "📖 تفاصيل السورة", "📅 الجدول الزمني"
     ])
-
-    with tab_mark:
-        st.subheader("حدد السور المحفوظة")
-        btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
-        with btn_col1: st.button("تحديد الكل", use_container_width=True)
-        with btn_col2: st.button("إلغاء التحديد", use_container_width=True)
-        with btn_col3: st.button("تحديد الجزء 30", use_container_width=True)
-        with btn_col4: st.button("تحديد الجزأين 29 و 30", use_container_width=True)
-        st.write("---")
-        st.info("هذا القسم مخصص لتأكيد الحفظ اليومي للمشاركين، سيتم تفعيل خصائصه لاحقاً.")
-    
-    with tab_details: st.info("هذا القسم مخصص لعرض تفاصيل السور ومتابعتها.")
-    with tab_schedule: st.info("هذا القسم مخصص للجدول الزمني لخطة القراءة أو الحفظ.")
 
     with tab_overview:
         st.subheader("جدول القراءة الحالي")
@@ -163,13 +149,13 @@ if "group" in query_params and query_params["group"] in db["groups"]:
                     st.write("✅ مكتمل")
 
         st.write("---")
-        st.subheader("⚙️ إدارة الختمة (لآدمن المجموعة)")
+        st.subheader("⚙️ إدارة الختمة (لمشرف المجموعة)")
         if completed_parts == 30:
             st.success("🎉 ما شاء الله! اكتملت قراءة جميع الأجزاء.")
             admin_password = st.text_input("أدخل كلمة المرور لإغلاق الختمة وترحيل الأسماء:", type="password")
             if st.button("حفظ وإغلاق الختمة"):
                 if admin_password == group_data["password"]:
-                    group_data["khatma_count"] += 1
+                    group_data["khatma_count"] = group_data.get("khatma_count", 0) + 1
                     readers = group_data["readers"]
                     group_data["readers"] = [readers[-1]] + readers[:-1] 
                     group_data["parts"] = ["لم تبدأ"] * 30 
@@ -181,52 +167,67 @@ if "group" in query_params and query_params["group"] in db["groups"]:
         else:
             st.warning("يجب إتمام قراءة جميع الأجزاء الـ 30 لتفعيل زر إغلاق الختمة.")
 
+    with tab_mark:
+        st.subheader("حدد السور المحفوظة")
+        btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
+        with btn_col1: st.button("تحديد الكل", use_container_width=True)
+        with btn_col2: st.button("إلغاء التحديد", use_container_width=True)
+        with btn_col3: st.button("تحديد الجزء 30", use_container_width=True)
+        with btn_col4: st.button("تحديد الجزأين 29 و 30", use_container_width=True)
+        st.write("---")
+        st.info("سيتم تفعيل هذه الخصائص لاحقاً.")
+    
+    with tab_details: st.info("هذا القسم مخصص لعرض تفاصيل السور ومتابعتها.")
+    with tab_schedule: st.info("هذا القسم مخصص للجدول الزمني لخطة القراءة أو الحفظ.")
+
 # ==========================================
-# 2. لوحة التحكم المركزية (للآدمن فقط)
+# 2. لوحة التحكم المركزية (تظهر عند الدخول للرابط الأساسي)
 # ==========================================
 else:
-    st.title("⚙️ لوحة التحكم المركزية")
-    st.warning("هذه الصفحة مخصصة لمدير النظام. الرجاء إدخال كلمة المرور للوصول للإعدادات.")
+    st.title("⚙️ لوحة التحكم المركزية لمدير النظام")
+    st.info("هذه الصفحة مخصصة لمدير النظام فقط لإدارة المجموعات وتوليد الروابط.")
     
-    admin_login = st.text_input("كلمة المرور المركزية:", type="password")
+    admin_login = st.text_input("أدخل كلمة المرور المركزية للدخول:", type="password")
     
     if admin_login == MASTER_PASSWORD:
         st.success("تم تسجيل الدخول بنجاح.")
         
-        tab1, tab2, tab3, tab4 = st.tabs(["🔗 إعداد الروابط", "➕ إضافة مجموعة", "📝 تعديل الأسماء", "📱 رسالة الواتساب"])
+        tab1, tab2, tab3, tab4 = st.tabs(["🔗 إعداد الروابط (هام جداً)", "➕ إنشاء مجموعة جديدة", "📝 تعديل أسماء القراء", "📱 إرسال تذكير واتساب جماعي"])
         
-        # --- التبويب الجديد للتعرف التلقائي على الرابط ---
         with tab1:
-            st.subheader("إعداد الرابط الأساسي للتطبيق")
-            st.info("انسخ رابط موقعك من أعلى المتصفح (مثال: https://quran-tracker.streamlit.app) والصقه هنا مرة واحدة لكي تعمل جميع روابط المجموعات والواتساب بشكل صحيح.")
+            st.subheader("1. إعداد الرابط الأساسي للتطبيق")
+            st.markdown("لكي تعمل روابط المجموعات وزر الواتساب بشكل صحيح، انسخ رابط موقعك من أعلى المتصفح (مثال: `https://your-app.streamlit.app`) والصقه هنا مرة واحدة فقط.")
             
             new_base_url = st.text_input("الرابط الأساسي:", value=BASE_URL)
             if st.button("حفظ الرابط الأساسي"):
                 db["base_url"] = new_base_url.strip("/")
                 save_data(db)
-                st.success("تم حفظ الرابط بنجاح! جميع الروابط الآن ستعمل دون مشاكل.")
+                st.success("تم حفظ الرابط بنجاح! جميع روابط المجموعات ستعمل الآن بشكل سليم.")
                 st.rerun()
                 
             st.write("---")
-            st.subheader("روابط المجموعات الحالية (جاهزة للنسخ والنشر)")
+            st.subheader("2. روابط المجموعات الحالية (انسخها للمشاركين)")
             if not BASE_URL:
-                st.error("يرجى إدخال الرابط الأساسي في الأعلى أولاً لتوليد روابط المجموعات.")
+                st.error("يرجى حفظ الرابط الأساسي في الأعلى أولاً حتى تظهر روابط المجموعات.")
+            elif not db["groups"]:
+                st.info("لا توجد مجموعات حالياً. اذهب للتبويب التالي لإنشاء مجموعة.")
             else:
                 for g_id, g_info in db["groups"].items():
-                    st.write(f"**{g_info['name']}**")
+                    st.write(f"**مجموعة: {g_info['name']}**")
                     group_direct_link = f"{BASE_URL}/?group={g_id}"
                     st.code(group_direct_link, language="text")
-                    st.markdown(f"[اضغط هنا للدخول المباشر للمجموعة]({group_direct_link})")
+                    st.markdown(f"[🔗 اضغط هنا للدخول لتجربة رابط المجموعة]({group_direct_link})")
                 
         with tab2:
-            st.subheader("إنشاء مجموعة جديدة")
-            new_group_name = st.text_input("اسم المجموعة (مثال: عائلة أحمد):")
-            new_group_pass = st.text_input("كلمة المرور الخاصة بإغلاق ختمة هذه المجموعة:")
+            st.subheader("إنشاء مجموعة جديدة (30 جزء / 30 قارئ)")
+            new_group_name = st.text_input("اسم المجموعة (مثال: عائلة فلان، أصدقاء العمل):")
+            new_group_pass = st.text_input("كلمة المرور الخاصة بمشرف هذه المجموعة (لإغلاق الختمة لاحقاً):")
             
+            st.write("أدخل أسماء القراء الـ 30 (كل اسم في سطر مستقل):")
             default_names = "\n".join([f"قارئ {i+1}" for i in range(30)])
-            new_readers_text = st.text_area("أدخل أسماء القراء الـ 30 (كل اسم في سطر جديد):", value=default_names, height=350)
+            new_readers_text = st.text_area("", value=default_names, height=350)
             
-            if st.button("إنشاء المجموعة ورفع البيانات"):
+            if st.button("إنشاء المجموعة واعتماد البيانات"):
                 readers_list = [name.strip() for name in new_readers_text.split('\n') if name.strip()]
                 
                 if not new_group_name or not new_group_pass:
@@ -243,18 +244,18 @@ else:
                         "readers": readers_list
                     }
                     save_data(db)
-                    st.success("تم إنشاء المجموعة بنجاح! اذهب لتبويب 'الروابط' لنسخ رابطها.")
+                    st.success("تم إنشاء المجموعة بنجاح! اذهب لتبويب 'إعداد الروابط' لنسخ رابطها.")
                     st.rerun()
 
         with tab3:
-            st.subheader("تعديل قراء مجموعة حالية")
+            st.subheader("تعديل قراء مجموعة سابقة")
             if db["groups"]:
                 edit_group_id = st.selectbox("اختر المجموعة المراد تعديلها:", list(db["groups"].keys()), format_func=lambda x: db["groups"][x]["name"], key="edit_select")
                 current_readers_text = "\n".join(db["groups"][edit_group_id]["readers"])
                 
-                edited_readers_text = st.text_area("قم بتعديل الأسماء هنا (تأكد أن العدد 30):", value=current_readers_text, height=350, key="edit_area")
+                edited_readers_text = st.text_area("قم بتعديل الأسماء هنا (تأكد أن العدد يبقى 30):", value=current_readers_text, height=350, key="edit_area")
                 
-                if st.button("حفظ التعديلات"):
+                if st.button("حفظ التعديلات الجديدة"):
                     edited_list = [name.strip() for name in edited_readers_text.split('\n') if name.strip()]
                     if len(edited_list) != 30:
                         st.error(f"يجب أن يظل العدد 30 اسماً! (العدد الحالي: {len(edited_list)}).")
@@ -264,10 +265,10 @@ else:
                         st.success("تم تحديث أسماء القراء بنجاح!")
                         st.rerun()
             else:
-                st.info("لا توجد مجموعات حالياً.")
+                st.info("لا توجد مجموعات مسجلة حالياً.")
                 
         with tab4:
-            st.subheader("تجهيز رسالة الواتساب (لغير المكتملين فقط)")
+            st.subheader("تجهيز رسالة تذكير جماعية عبر الواتساب (للمتأخرين فقط)")
             if db["groups"]:
                 wa_group_id = st.selectbox("اختر المجموعة لتوليد الرسالة:", list(db["groups"].keys()), format_func=lambda x: db["groups"][x]["name"], key="wa_select")
                 wa_group_info = db["groups"][wa_group_id]
@@ -293,14 +294,14 @@ else:
                     msg_lines.append("🎉 اكتملت قراءة جميع الأجزاء بفضل الله!")
                     
                 msg_lines.append("ــــــــــــــــــــــــــــــــــــــــــ")
-                msg_lines.append(f"🔗 *رابط المجموعة لتسجيل القراءة:*")
+                msg_lines.append(f"🔗 *الرابط المباشر للمجموعة لتسجيل الإتمام:*")
                 msg_lines.append(group_link)
                 
                 whatsapp_text = "\n".join(msg_lines)
-                st.write("انسخ النص التالي وقم بلصقه في الواتساب:")
+                st.write("انسخ النص التالي وقم بلصقه في قروب الواتساب الخاص بالمجموعة:")
                 st.code(whatsapp_text, language="text")
             else:
-                st.info("لا توجد مجموعات حالياً.")
+                st.info("لا توجد مجموعات مسجلة حالياً.")
                 
     elif admin_login != "":
         st.error("كلمة المرور خاطئة!")
