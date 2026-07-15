@@ -106,7 +106,7 @@ if "group" in query_params and query_params["group"] in db["groups"]:
     st.progress(progress_percentage)
     st.write("---")
 
-    # التبويبات المترجمة
+    # التبويبات
     tab_mark, tab_details, tab_schedule, tab_overview = st.tabs([
         "✅ تأكيد الحفظ", 
         "📖 تفاصيل السورة", 
@@ -114,11 +114,10 @@ if "group" in query_params and query_params["group"] in db["groups"]:
         "📊 ملخص الأجزاء"
     ])
 
-    # 1. تبويب تأكيد الحفظ (تمت إضافة الأزرار المترجمة هنا)
+    # 1. تبويب تأكيد الحفظ
     with tab_mark:
         st.subheader("حدد السور المحفوظة")
         
-        # إنشاء 4 أعمدة للأزرار لتكون بجوار بعضها
         btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
         
         with btn_col1:
@@ -141,7 +140,7 @@ if "group" in query_params and query_params["group"] in db["groups"]:
     with tab_schedule:
         st.info("هذا القسم مخصص للجدول الزمني لخطة القراءة أو الحفظ.")
 
-    # 4. تبويب ملخص الأجزاء (يحتوي على جدول الـ 30 جزء الخاص بنا)
+    # 4. تبويب ملخص الأجزاء (يحتوي على جدول الـ 30 جزء)
     with tab_overview:
         st.subheader("جدول القراءة الحالي")
         status_options = ["لم تبدأ", "جاري القراءة", "تمت القراءة"]
@@ -227,4 +226,84 @@ else:
             new_group_name = st.text_input("اسم المجموعة (مثال: عائلة أحمد):")
             new_group_pass = st.text_input("كلمة المرور الخاصة بإغلاق ختمة هذه المجموعة:")
             
-            default_names = "\n".join
+            default_names = "\n".join([f"قارئ {i+1}" for i in range(30)])
+            new_readers_text = st.text_area("أدخل أسماء القراء الـ 30 (كل اسم في سطر جديد):", value=default_names, height=350)
+            
+            if st.button("إنشاء المجموعة ورفع البيانات"):
+                readers_list = [name.strip() for name in new_readers_text.split('\n') if name.strip()]
+                
+                if not new_group_name or not new_group_pass:
+                    st.error("الرجاء كتابة اسم المجموعة وكلمة المرور.")
+                elif len(readers_list) != 30:
+                    st.error(f"يجب إدخال 30 اسماً بالضبط! (أنت أدخلت {len(readers_list)} اسم).")
+                else:
+                    new_id = "group_" + str(uuid.uuid4())[:8] 
+                    db["groups"][new_id] = {
+                        "name": new_group_name,
+                        "password": new_group_pass,
+                        "khatma_count": 0,
+                        "parts": ["لم تبدأ"] * 30,
+                        "readers": readers_list
+                    }
+                    save_data(db)
+                    st.success("تم إنشاء المجموعة بنجاح!")
+                    st.rerun()
+
+        with tab3:
+            st.subheader("تعديل قراء مجموعة حالية")
+            if db["groups"]:
+                edit_group_id = st.selectbox("اختر المجموعة المراد تعديلها:", list(db["groups"].keys()), format_func=lambda x: db["groups"][x]["name"], key="edit_select")
+                current_readers_text = "\n".join(db["groups"][edit_group_id]["readers"])
+                
+                edited_readers_text = st.text_area("قم بتعديل الأسماء هنا (تأكد أن العدد 30):", value=current_readers_text, height=350, key="edit_area")
+                
+                if st.button("حفظ التعديلات"):
+                    edited_list = [name.strip() for name in edited_readers_text.split('\n') if name.strip()]
+                    if len(edited_list) != 30:
+                        st.error(f"يجب أن يظل العدد 30 اسماً! (العدد الحالي: {len(edited_list)}).")
+                    else:
+                        db["groups"][edit_group_id]["readers"] = edited_list
+                        save_data(db)
+                        st.success("تم تحديث أسماء القراء بنجاح!")
+                        st.rerun()
+            else:
+                st.info("لا توجد مجموعات حالياً.")
+                
+        with tab4:
+            st.subheader("تجهيز رسالة الواتساب (لغير المكتملين فقط)")
+            if db["groups"]:
+                wa_group_id = st.selectbox("اختر المجموعة لتوليد الرسالة:", list(db["groups"].keys()), format_func=lambda x: db["groups"][x]["name"], key="wa_select")
+                
+                wa_group_info = db["groups"][wa_group_id]
+                group_link = f"{BASE_URL}/?group={wa_group_id}"
+                
+                msg_lines = []
+                msg_lines.append(f"📖 *تذكير بالأجزاء المتبقية - {wa_group_info['name']}* 📖")
+                msg_lines.append("ــــــــــــــــــــــــــــــــــــــــــ")
+                
+                has_remaining = False
+                for i in range(30):
+                    part_status = wa_group_info['parts'][i]
+                    if part_status == False: part_status = "لم تبدأ"
+                    elif part_status == True: part_status = "تمت القراءة"
+                    
+                    if part_status != "تمت القراءة":
+                        msg_lines.append(f"الجزء {i+1} : {wa_group_info['readers'][i]}")
+                        has_remaining = True
+                        
+                if not has_remaining:
+                    msg_lines.append("🎉 اكتملت قراءة جميع الأجزاء بفضل الله!")
+                    
+                msg_lines.append("ــــــــــــــــــــــــــــــــــــــــــ")
+                msg_lines.append(f"🔗 *رابط المجموعة لتسجيل القراءة:*")
+                msg_lines.append(group_link)
+                
+                whatsapp_text = "\n".join(msg_lines)
+                
+                st.write("انسخ النص التالي وقم بلصقه في الواتساب:")
+                st.code(whatsapp_text, language="text")
+            else:
+                st.info("لا توجد مجموعات حالياً.")
+                
+    elif admin_login != "":
+        st.error("كلمة المرور خاطئة!")
