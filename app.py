@@ -3,41 +3,55 @@ import json
 import uuid
 import urllib.parse 
 
-# إعدادات الصفحة
-st.set_page_config(page_title="متابعة ختمة القرآن", page_icon="📖", layout="centered")
+# إعدادات الصفحة (تم التعديل لتكون الواجهة عريضة لتناسب البطاقات الأربع)
+st.set_page_config(page_title="متابعة ختمة القرآن", page_icon="📖", layout="wide")
 
 # ==========================================
-# كود تحويل الواجهة للغة العربية (RTL) وتغيير الخط
+# كود التصميم (CSS) للغة العربية والبطاقات المستوحاة من الصورة
 # ==========================================
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
     
-    /* تطبيق الخط العربي على جميع العناصر */
     html, body, [class*="st-"] {
         font-family: 'Tajawal', sans-serif !important;
     }
     
-    /* تحويل اتجاه الصفحة من اليمين لليسار */
-    .stApp {
-        direction: rtl;
-    }
+    .stApp { direction: rtl; }
     
-    /* محاذاة النصوص والقوائم لليمين */
     p, div, h1, h2, h3, h4, h5, h6, span, label, input, textarea {
         text-align: right !important;
     }
     
-    /* ضبط الأعمدة لتبدأ من اليمين */
-    [data-testid="column"] {
-        direction: rtl;
-    }
+    [data-testid="column"] { direction: rtl; }
     
-    /* تحسين شكل الأزرار */
-    .stButton button {
-        font-family: 'Tajawal', sans-serif !important;
-        font-weight: bold;
+    /* تنسيق بطاقات الإحصائيات العلوية */
+    .dashboard-card {
+        border-radius: 12px;
+        padding: 20px 10px;
+        color: white;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
+    .dashboard-card h2 { margin: 10px 0 5px 0 !important; font-size: 2.2rem !important; font-weight: 700 !important; color: white !important; text-align: center !important;}
+    .dashboard-card p { margin: 0 !important; font-size: 1rem !important; opacity: 0.9 !important; text-align: center !important;}
+    .dashboard-card .icon { font-size: 1.5rem !important; margin-bottom: 5px !important; text-align: center !important;}
+    
+    /* ألوان البطاقات مطابقة للصورة */
+    .card-green { background-color: #277953; }
+    .card-yellow { background-color: #d4a32a; }
+    .card-dark { background-color: #1a4d33; }
+    .card-brown { background-color: #a47e1b; }
+    
+    .main-subtitle { text-align: center !important; color: #888; font-size: 1.1rem; margin-bottom: 25px; font-weight: 500;}
+    .stats-text { color: #555; font-size: 0.95rem; font-weight: bold; }
+    .stats-row { display: flex; justify-content: space-between; margin-top: 15px; margin-bottom: 5px; direction: rtl; }
+    
+    .dashboard-card * { text-align: center !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -65,74 +79,117 @@ if "group" in query_params and query_params["group"] in db["groups"]:
     group_id = query_params["group"]
     group_data = db["groups"][group_id]
     
-    st.title(f"📖 {group_data['name']}")
-    st.info(f"**عدد الختمات المكتملة لهذه المجموعة: {group_data['khatma_count']} ختمة**")
-    st.write("---")
-
-    st.subheader("جدول القراءة الحالي")
+    # حساب الأجزاء المكتملة لربطها بشريط التقدم
     completed_parts = 0
-    status_options = ["لم تبدأ", "جاري القراءة", "تمت القراءة"]
-
-    for i in range(30):
-        col1, col2, col3, col4 = st.columns([1, 1.5, 1.5, 1])
-        
-        with col1:
-            st.write(f"**الجزء {i+1}**")
-        with col2:
-            st.write(f"القارئ: {group_data['readers'][i]}")
-            
-        current_status = group_data['parts'][i]
-        if current_status == False: current_status = "لم تبدأ"
-        elif current_status == True: current_status = "تمت القراءة"
-            
-        with col3:
-            selected_status = st.selectbox(
-                "الحالة", 
-                status_options, 
-                index=status_options.index(current_status), 
-                key=f"status_{i}", 
-                label_visibility="collapsed"
-            )
-            
-            if selected_status != current_status:
-                group_data['parts'][i] = selected_status
-                save_data(db)
-                st.rerun()
-
-        with col4:
-            if current_status != "تمت القراءة":
-                msg = f"السلام عليكم\nتذكير بقراءة *الجزء {i+1}*\nالقارئ: *{group_data['readers'][i]}*\n\nالرابط لتسجيل الإتمام:\n{BASE_URL}/?group={group_id}"
-                encoded_msg = urllib.parse.quote(msg)
-                wa_link = f"https://wa.me/?text={encoded_msg}"
-                st.link_button("📱 تذكير", wa_link)
-            else:
-                st.write("✅ مكتمل")
-
-        if group_data['parts'][i] == "تمت القراءة":
+    for status in group_data['parts']:
+        if status == True or status == "تمت القراءة":
             completed_parts += 1
+            
+    progress_percentage = completed_parts / 30.0
+    
+    st.title(f"📖 {group_data['name']}")
+    
+    # الشعار النصي العلوي المترجم
+    st.markdown("<div class='main-subtitle'>خطّط لرحلتك · تتبّع تقدمك · أتمم حفظ القرآن</div>", unsafe_allow_html=True)
 
+    # البطاقات الأربع المترجمة
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: 
+        st.markdown("<div class='dashboard-card card-green'><div class='icon'>📅</div><h2>528</h2><p>الأيام المتبقية</p></div>", unsafe_allow_html=True)
+    with c2: 
+        st.markdown("<div class='dashboard-card card-yellow'><div class='icon'>🌙</div><h2>17.6</h2><p>الأشهر</p></div>", unsafe_allow_html=True)
+    with c3: 
+        st.markdown("<div class='dashboard-card card-dark'><div class='icon'>📖</div><h2>3/114</h2><p>السور المحفوظة</p></div>", unsafe_allow_html=True)
+    with c4: 
+        st.markdown("<div class='dashboard-card card-brown'><div class='icon'>🏁</div><h2>ديسمبر 2027</h2><p>موعد الإتمام المتوقع</p></div>", unsafe_allow_html=True)
+
+    # شريط التقدم التفاعلي (مربوط بنسبة إنجاز الختمة الفعلية)
+    st.markdown(f"""
+    <div class='stats-row'>
+        <span class='stats-text'>مكتمل بنسبة {int(progress_percentage * 100)}%</span>
+        <span class='stats-text'>الأجزاء المنجزة: {completed_parts}/30 جزء</span>
+    </div>
+    """, unsafe_allow_html=True)
+    st.progress(progress_percentage)
     st.write("---")
-    st.subheader("⚙️ إدارة الختمة (لآدمن المجموعة)")
-    st.progress(completed_parts / 30)
-    st.write(f"الأجزاء المكتملة: {completed_parts} من 30")
 
-    if completed_parts == 30:
-        st.success("🎉 ما شاء الله! اكتملت قراءة جميع الأجزاء.")
-        admin_password = st.text_input("أدخل كلمة المرور لإغلاق الختمة وترحيل الأسماء:", type="password")
+    # التبويبات المترجمة من الصورة
+    tab_mark, tab_details, tab_schedule, tab_overview = st.tabs([
+        "✅ تأكيد الحفظ", 
+        "📖 تفاصيل السورة", 
+        "📅 الجدول الزمني", 
+        "📊 ملخص الأجزاء"
+    ])
+
+    with tab_mark:
+        st.info("هذا القسم مخصص لتأكيد الحفظ اليومي للمشاركين.")
+    
+    with tab_details:
+        st.info("هذا القسم مخصص لعرض تفاصيل السور ومتابعتها.")
         
-        if st.button("حفظ وإغلاق الختمة"):
-            if admin_password == group_data["password"]:
-                group_data["khatma_count"] += 1
-                readers = group_data["readers"]
-                group_data["readers"] = [readers[-1]] + readers[:-1] 
-                group_data["parts"] = ["لم تبدأ"] * 30 
-                save_data(db)
-                st.success("تم إغلاق الختمة بنجاح، وترحيل الأسماء للختمة الجديدة!")
-                st.rerun()
-            else:
-                st.error("كلمة المرور غير صحيحة!")
-    else:
-        st.warning("يجب إتمام قراءة جميع الأجزاء الـ 30 لتفعيل زر إغلاق الختمة.")
+    with tab_schedule:
+        st.info("هذا القسم مخصص للجدول الزمني لخطة القراءة أو الحفظ.")
+
+    # وضعنا جدول الـ 30 جزء داخل تبويب (ملخص الأجزاء) ليكون في مكانه الصحيح
+    with tab_overview:
+        st.subheader("جدول القراءة الحالي")
+        status_options = ["لم تبدأ", "جاري القراءة", "تمت القراءة"]
+
+        for i in range(30):
+            col1, col2, col3, col4 = st.columns([1, 1.5, 1.5, 1])
+            
+            with col1:
+                st.write(f"**الجزء {i+1}**")
+            with col2:
+                st.write(f"القارئ: {group_data['readers'][i]}")
+                
+            current_status = group_data['parts'][i]
+            if current_status == False: current_status = "لم تبدأ"
+            elif current_status == True: current_status = "تمت القراءة"
+                
+            with col3:
+                selected_status = st.selectbox(
+                    "الحالة", 
+                    status_options, 
+                    index=status_options.index(current_status), 
+                    key=f"status_{i}", 
+                    label_visibility="collapsed"
+                )
+                
+                if selected_status != current_status:
+                    group_data['parts'][i] = selected_status
+                    save_data(db)
+                    st.rerun()
+
+            with col4:
+                if current_status != "تمت القراءة":
+                    msg = f"السلام عليكم\nتذكير بقراءة *الجزء {i+1}*\nالقارئ: *{group_data['readers'][i]}*\n\nالرابط لتسجيل الإتمام:\n{BASE_URL}/?group={group_id}"
+                    encoded_msg = urllib.parse.quote(msg)
+                    wa_link = f"https://wa.me/?text={encoded_msg}"
+                    st.link_button("📱 تذكير", wa_link)
+                else:
+                    st.write("✅ مكتمل")
+
+        st.write("---")
+        st.subheader("⚙️ إدارة الختمة (لآدمن المجموعة)")
+        
+        if completed_parts == 30:
+            st.success("🎉 ما شاء الله! اكتملت قراءة جميع الأجزاء.")
+            admin_password = st.text_input("أدخل كلمة المرور لإغلاق الختمة وترحيل الأسماء:", type="password")
+            
+            if st.button("حفظ وإغلاق الختمة"):
+                if admin_password == group_data["password"]:
+                    group_data["khatma_count"] += 1
+                    readers = group_data["readers"]
+                    group_data["readers"] = [readers[-1]] + readers[:-1] 
+                    group_data["parts"] = ["لم تبدأ"] * 30 
+                    save_data(db)
+                    st.success("تم إغلاق الختمة بنجاح، وترحيل الأسماء للختمة الجديدة!")
+                    st.rerun()
+                else:
+                    st.error("كلمة المرور غير صحيحة!")
+        else:
+            st.warning("يجب إتمام قراءة جميع الأجزاء الـ 30 لتفعيل زر إغلاق الختمة.")
 
 else:
     # ==========================================
