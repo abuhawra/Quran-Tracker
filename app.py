@@ -6,9 +6,44 @@ import urllib.parse
 # إعدادات الصفحة
 st.set_page_config(page_title="متابعة ختمة القرآن", page_icon="📖", layout="centered")
 
+# ==========================================
+# كود تحويل الواجهة للغة العربية (RTL) وتغيير الخط
+# ==========================================
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+    
+    /* تطبيق الخط العربي على جميع العناصر */
+    html, body, [class*="st-"] {
+        font-family: 'Tajawal', sans-serif !important;
+    }
+    
+    /* تحويل اتجاه الصفحة من اليمين لليسار */
+    .stApp {
+        direction: rtl;
+    }
+    
+    /* محاذاة النصوص والقوائم لليمين */
+    p, div, h1, h2, h3, h4, h5, h6, span, label, input, textarea {
+        text-align: right !important;
+    }
+    
+    /* ضبط الأعمدة لتبدأ من اليمين */
+    [data-testid="column"] {
+        direction: rtl;
+    }
+    
+    /* تحسين شكل الأزرار */
+    .stButton button {
+        font-family: 'Tajawal', sans-serif !important;
+        font-weight: bold;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # الإعدادات العامة
 MASTER_PASSWORD = "admin" 
-BASE_URL = "https://الرابط-الجديد-الخاص-بك.streamlit.app" ضع رابط موقعك الحقيقي هنا
+BASE_URL = "https://your-app-name.streamlit.app" # ⚠️ ضع رابط موقعك الحقيقي هنا
 
 # دالة لقراءة البيانات
 def load_data():
@@ -65,7 +100,6 @@ if "group" in query_params and query_params["group"] in db["groups"]:
                 st.rerun()
 
         with col4:
-            # زر الواتساب الفردي يظهر فقط لمن لم يتم القراءة
             if current_status != "تمت القراءة":
                 msg = f"السلام عليكم\nتذكير بقراءة *الجزء {i+1}*\nالقارئ: *{group_data['readers'][i]}*\n\nالرابط لتسجيل الإتمام:\n{BASE_URL}/?group={group_id}"
                 encoded_msg = urllib.parse.quote(msg)
@@ -186,7 +220,6 @@ else:
                     if part_status == False: part_status = "لم تبدأ"
                     elif part_status == True: part_status = "تمت القراءة"
                     
-                    # إدراج الجزء واسم القارئ فقط إذا لم تتم القراءة
                     if part_status != "تمت القراءة":
                         msg_lines.append(f"الجزء {i+1} : {wa_group_info['readers'][i]}")
                         has_remaining = True
